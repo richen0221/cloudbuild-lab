@@ -1,0 +1,41 @@
+---
+steps:
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "$_REGISTRY_NAME/$_PROJECT_ID/$_REGISTRY_REPO_NAME/$_REPO_NAME:$_TAG_NAME", "$_DIR_NAME"]
+
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "$_REGISTRY_NAME/$_PROJECT_ID/$_REGISTRY_REPO_NAME/$_REPO_NAME:$_TAG_NAME"]  
+
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: gcloud
+    args: ["container", "clusters", "get-credentials", "$_CLUSTER_NAME", "--zone", "$_ZONE_NAME", "--project", "$_PROJECT_ID"]
+  
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: sh
+    args: ["-c", "cat $_DEPLOY.template |sed -e 's%{{IMAGE}}%$_REGISTRY_NAME/$_PROJECT_ID/$_REGISTRY_REPO_NAME/$_REPO_NAME:$_TAG_NAME%g' > $_DEPLOY"]
+
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: kubectl
+    args: ["apply", "-f", "$_DEPLOY", "-n", "$_NAMESPACE_NAME"]
+
+#images: ["$_REGISTRY_NAME/$_PROJECT_ID/$_REGISTRY_REPO_NAME/$_REPO_NAME:$_TAG_NAME"]
+
+options:
+  env:
+  - 'KUBECONFIG=/workspace/kubeconfig'
+
+substitutions:
+  #_PROJECT_ID: $PROJECT_ID
+  _REGISTRY_NAME: asia-east1-docker.pkg.dev
+  _REGISTRY_REPO_NAME: demo
+  _REPO_NAME: "flask"
+  _TAG_NAME: "v1"
+  _DIR_NAME: "./"
+  _DEPLOY: kube-hello-change.yaml
+  _CLUSTER_NAME: demo-cluster  
+  _ZONE_NAME: asia-east1-b
+  _NAMESPACE_NAME: default
+
+
+timeout: 6000s
